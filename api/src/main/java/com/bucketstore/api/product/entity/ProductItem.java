@@ -24,6 +24,14 @@ public class ProductItem {
     private String size;
     private int stock; // 이 옵션의 재고
 
+    // 테스트에서 사용할 생성자 (id 제외)
+    public ProductItem(Product product, String color, String size, int stock) {
+        this.product = product;
+        this.color = color;
+        this.size = size;
+        this.stock = stock;
+    }
+
     /**
      * 재고 차감 및 복원 로직
      */

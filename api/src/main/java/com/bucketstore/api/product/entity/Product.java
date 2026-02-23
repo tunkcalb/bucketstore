@@ -17,4 +17,9 @@ public class Product {
     // 상품코드
     @Column(nullable = false, unique = true)
     private String productCode;
+
+    // 🔥 테스트 및 서비스에서 사용할 생성자 (id 제외)
+    public Product(String productCode) {
+        this.productCode = productCode;
+    }
 }
