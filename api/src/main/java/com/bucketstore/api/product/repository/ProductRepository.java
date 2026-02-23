@@ -1,4 +1,4 @@
 package com.bucketstore.api.product.repository;
 
-public class ProductRepository {
+public interface ProductRepository {
 }
