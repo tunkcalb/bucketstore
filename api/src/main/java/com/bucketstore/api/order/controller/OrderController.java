@@ -2,9 +2,11 @@ package com.bucketstore.api.order.controller;
 
 import com.bucketstore.api.order.dto.CreateOrderDto;
 import com.bucketstore.api.order.dto.OrderCancelDto;
+import com.bucketstore.api.order.dto.OrderResponseDto;
 import com.bucketstore.api.order.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -49,5 +51,17 @@ public class OrderController {
         Long memberId = 1L; // 임시로 사용자 ID를 1로 고정
         orderService.cancelOrderItem(memberId, orderId, orderCancelDto);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<OrderResponseDto>> getMyOrders(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+
+        // Long memberId = userPrincipal.getId();
+        Long memberId = 1L; // 임시로 사용자 ID를 1로 고정
+
+        Page<OrderResponseDto> responses = orderService.getMyOrders(memberId, page, size);
+        return ResponseEntity.ok(responses);
     }
 }

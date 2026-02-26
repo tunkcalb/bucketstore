@@ -4,6 +4,7 @@ import com.bucketstore.api.auth.entity.Member;
 import com.bucketstore.api.auth.repository.MemberRepository;
 import com.bucketstore.api.order.dto.OrderCancelDto;
 import com.bucketstore.api.order.dto.OrderItemDto;
+import com.bucketstore.api.order.dto.OrderResponseDto;
 import com.bucketstore.api.order.entity.Order;
 import com.bucketstore.api.order.entity.OrderItem;
 import com.bucketstore.api.order.entity.OrderItemType;
@@ -12,11 +13,14 @@ import com.bucketstore.api.order.repository.OrderRepository;
 import com.bucketstore.api.product.entity.ProductItem;
 import com.bucketstore.api.product.repository.ProductItemRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -100,5 +104,49 @@ public class OrderService {
         return items.stream()
                 .mapToInt(item -> item.getType() == OrderItemType.ORDER ? item.getCount() : -item.getCount())
                 .sum();
+    }
+
+    /**
+     * 주문 내역 조회
+     */
+    @Transactional(readOnly = true)
+    public Page<OrderResponseDto> getMyOrders(Long memberId, int page, int size) {
+        // page: 페이지 번호, size: 한 페이지에 보여줄 개수
+        PageRequest pageRequest = PageRequest.of(page, size);
+
+        Page<Order> orderPage = orderRepository.findAllByMemberId(memberId, pageRequest);
+
+        return orderPage.map(this::convertToDto);
+    }
+
+    private OrderResponseDto convertToDto(Order order) {
+        List<OrderResponseDto.OrderItemDetailDto> itemDetails = order.getOrderItems().stream()
+                // 1. 상품 옵션별로 그룹화
+                .collect(Collectors.groupingBy(
+                        item -> item.getProductItem().getProduct().getProductCode() + "-" + item.getProductItem().getColor() + "-" + item.getProductItem().getSize()
+                ))
+                .values().stream()
+                .map(items -> {
+                    OrderItem item = items.get(0);
+
+                    // 2. 상세 이력 리스트 생성 (HistoryDto 변환)
+                    List<OrderResponseDto.OrderItemDetailDto.HistoryDto> histories = items.stream()
+                            .map(i -> new OrderResponseDto.OrderItemDetailDto.HistoryDto(
+                                    i.getType().name(), i.getCount(), i.getCreatedAt()))
+                            .toList();
+
+                    // 3. 최종 수량 합산 (ORDER는 +, CANCEL은 -)
+                    int totalCount = items.stream()
+                            .mapToInt(i -> i.getType() == OrderItemType.ORDER ? i.getCount() : -i.getCount())
+                            .sum();
+
+                    return new OrderResponseDto.OrderItemDetailDto(
+                            item.getProductItem().getProduct().getProductCode(), item.getProductItem().getColor(), item.getProductItem().getSize(),
+                            totalCount, histories
+                    );
+                })
+                .toList();
+
+        return new OrderResponseDto(order.getId(), order.getOrderDate(), itemDetails);
     }
 }

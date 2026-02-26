@@ -5,6 +5,7 @@ import com.bucketstore.api.auth.repository.MemberRepository;
 import com.bucketstore.api.order.dto.CreateOrderDto;
 import com.bucketstore.api.order.dto.OrderCancelDto;
 import com.bucketstore.api.order.dto.OrderItemDto;
+import com.bucketstore.api.order.dto.OrderResponseDto;
 import com.bucketstore.api.order.entity.OrderItem;
 import com.bucketstore.api.order.entity.OrderItemType;
 import com.bucketstore.api.order.repository.OrderItemRepository;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
 
 import java.util.Arrays;
 import java.util.List;
@@ -147,5 +149,71 @@ class OrderServiceTest {
         boolean hasCancelRecord = orderItems.stream()
                 .anyMatch(orderItem -> orderItem.getType() == OrderItemType.CANCEL);
         assertThat(hasCancelRecord).isTrue();
+    }
+
+    @Test
+    @DisplayName("내 주문 목록 조회 시 합산 수량과 이력이 정확히 계산되어야 한다")
+    void getMyOrders_Success() {
+
+        // 주문 정보
+        String productCode = "11101JS505";
+        String color = "WH";
+        String size = "95";
+        Member member = memberRepository.save(new Member("user_1"));
+        Product product = productRepository.save(new Product(productCode));
+        ProductItem item = productItemRepository.save(new ProductItem(product, color, size, 10));
+
+        // 1번 주문 (3개 구매 후 1개 취소)
+        List<OrderItemDto> items = List.of(new OrderItemDto(productCode, color, size, 3));
+        Long orderId = orderService.createOrder(member.getId(), items);
+
+        OrderCancelDto cancelDto = new OrderCancelDto(productCode, color, size, 1);
+        orderService.cancelOrderItem(member.getId(), orderId, cancelDto);
+
+        // 조회 실행 (0페이지, 5개씩)
+        Page<OrderResponseDto> result = orderService.getMyOrders(member.getId(), 0, 5);
+
+        // 검증
+        assertThat(result.getContent()).hasSize(1); // 주문은 1건
+        OrderResponseDto response = result.getContent().get(0);
+
+        // 상품 상세 정보 검증
+        assertThat(response.getOrderItems()).hasSize(1);
+        OrderResponseDto.OrderItemDetailDto detail = response.getOrderItems().get(0);
+
+        assertThat(detail.getTotalCount()).isEqualTo(2); // 3 - 1 = 2개여야 함
+        assertThat(detail.getHistories()).hasSize(2);    // ORDER, CANCEL 총 2건의 이력
+        assertThat(detail.getHistories().get(0).getType()).isEqualTo("ORDER");
+        assertThat(detail.getHistories().get(1).getType()).isEqualTo("CANCEL");
+    }
+
+    @Test
+    @DisplayName("페이징 처리가 정상적으로 동작해야 한다")
+    void getMyOrders_Paging() {
+
+        // 주문 정보
+        String productCode = "11101JS505";
+        String color = "WH";
+        String size = "95";
+        Member member = memberRepository.save(new Member("user_1"));
+        Product product = productRepository.save(new Product(productCode));
+        ProductItem item = productItemRepository.save(new ProductItem(product, color, size, 10));
+
+        // 주문 6건 생성
+        for (int i = 0; i < 6; i++) {
+            List<OrderItemDto> items = List.of(new OrderItemDto(productCode, color, size, 1));
+            orderService.createOrder(member.getId(), items);
+        }
+
+        // 0페이지 조회 (사이즈 5)
+        Page<OrderResponseDto> page0 = orderService.getMyOrders(member.getId(), 0, 5);
+        // 1페이지 조회 (사이즈 5)
+        Page<OrderResponseDto> page1 = orderService.getMyOrders(member.getId(), 1, 5);
+
+        // 검증
+        assertThat(page0.getContent()).hasSize(5);   // 첫 페이지 5개
+        assertThat(page1.getContent()).hasSize(1);   // 두 번째 페이지 1개
+        assertThat(page0.getTotalElements()).isEqualTo(6); // 전체는 6개
+        assertThat(page0.getTotalPages()).isEqualTo(2);    // 총 2페이지
     }
 }
