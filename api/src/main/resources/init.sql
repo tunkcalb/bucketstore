@@ -1,3 +1,21 @@
+CREATE DATABASE IF NOT EXISTS bucketstore;
+USE bucketstore;
+
+    -- 테이블이 없으면 생성
+CREATE TABLE IF NOT EXISTS products (
+                                        id BIGINT PRIMARY KEY,
+                                        product_code VARCHAR(50) NOT NULL
+    );
+
+CREATE TABLE IF NOT EXISTS product_items (
+                                             id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                             product_id BIGINT,
+                                             color VARCHAR(20),
+    size VARCHAR(20),
+    stock INT DEFAULT 0,
+    FOREIGN KEY (product_id) REFERENCES products(id)
+    );
+
 -- 1. 상품 데이터 (products)
 INSERT INTO products (id, product_code) VALUES (1, '11101JS505');
 INSERT INTO products (id, product_code) VALUES (2, '82193SRK52');

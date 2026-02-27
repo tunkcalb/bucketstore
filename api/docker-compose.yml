@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: bucket-db
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: bucketstore
+      MYSQL_USER: bucketstore
+      MYSQL_PASSWORD: "1234"
+      MYSQL_ROOT_PASSWORD: "bucketstorepassword"
+    volumes:
+      # 초기 상품 데이터 적재 필수 항목
+      - ./src/main/resources/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 5
+
+  app:
+    build: .
+    container_name: bucket-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # DB 접속 정보 덮어쓰기 (도커 네트워크 내 서비스명 'db' 사용)
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/bucketstore?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: bucketstore
+      SPRING_DATASOURCE_PASSWORD: "1234"
+      # JWT 시크릿 키 설정
+      JWT_SECRET: zB6fR9w2vN5x8y1zA4b7c0d3e6f9g2h5i8j1k4l7m0n3o6p9q2r5s8t1u4v7w0x3
