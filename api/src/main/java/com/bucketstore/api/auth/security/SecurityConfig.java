@@ -1,5 +1,6 @@
-package com.bucketstore.api.config;
+package com.bucketstore.api.auth.security;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -7,10 +8,14 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -24,12 +29,16 @@ public class SecurityConfig {
 
                 // API 접근 권한 설정
                 .authorizeHttpRequests(auth -> auth
-                        // Postman 테스트를 위해 /order로 시작하는 모든 요청은 허용
-                        .requestMatchers("/order/**").permitAll()
-                        // TODO 로그인 관련 설정 추가
-                        // .requestMatchers("/api/auth/**").permitAll()
-                        .anyRequest().authenticated()
-                );
+                                // 인증 API(토큰 발행)는 모두 허용
+                                .requestMatchers("/auth/**").permitAll()
+
+                                // 어드민 API는 superuser만 접근 가능
+                                .requestMatchers("/admin/**").hasRole("ADMIN")
+
+                                // 그 외 모든 요청은 인증 필요
+                                .anyRequest().authenticated()
+                ).addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
+                        UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
