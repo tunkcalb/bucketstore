@@ -1,5 +1,5 @@
 package com.bucketstore.api.product.repository;
-import com.bucketstore.api.config.QuerydslConfig;
+import com.bucketstore.api.global.config.QuerydslConfig;
 import com.bucketstore.api.product.entity.Product;
 import com.bucketstore.api.product.entity.ProductItem;
 import org.junit.jupiter.api.DisplayName;

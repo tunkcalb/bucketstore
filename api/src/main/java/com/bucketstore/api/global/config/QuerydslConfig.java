@@ -1,4 +1,4 @@
-package com.bucketstore.api.config;
+package com.bucketstore.api.global.config;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
